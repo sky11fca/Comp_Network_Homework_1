@@ -21,6 +21,7 @@ int main()
     printf("Enter a message:\n");
     fgets(msg, BUFFER_SIZE, stdin);
     msg[strlen(msg)-1]='\0';
+    printf("OUTPUTED MESSAGE: %s\n", msg);
     printf("Waiting for the server to respond...\n");
     fd=open(FIFO_IN, O_WRONLY);
 
@@ -31,7 +32,7 @@ int main()
     
     fd=open(FIFO_OUT, O_RDONLY);
     read(fd, received, BUFFER_SIZE);
-    printf("OUTPUTTED MESSAGE: %s\n", msg);
+    printf("OUTPUTTED MESSAGE: %s\n", received);
     close(fd);
     unlink(FIFO_IN);
     unlink(FIFO_OUT);

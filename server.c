@@ -32,6 +32,7 @@ int main()
         //
 
         printf("SUCCESFULLY received message from father!!\n");
+        printf("OUTPUTED MESSAGE: %s\n", receiver);
         if(write(sock[0], receiver, BUFFER_SIZE)<0)
         {
             perror("SERVER C: WRITE!!");
@@ -50,6 +51,7 @@ int main()
         fd=open(FIFO_IN, O_RDONLY);
 
         read(fd, msg, BUFFER_SIZE);
+        printf("OUTPUTED MESSAGE: %s\n", msg);
         close(fd);
         printf("Sending the Message to the child...\n");
         write(sock[1], msg, BUFFER_SIZE);
@@ -57,7 +59,7 @@ int main()
         wait(NULL);
 
         fd=open(FIFO_OUT, O_WRONLY);
-        write(sock[1], outputed, BUFFER_SIZE);
+        read(sock[1], outputed, BUFFER_SIZE);
 
         write(fd, outputed, BUFFER_SIZE);
         close(sock[1]);
