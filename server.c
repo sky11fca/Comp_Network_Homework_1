@@ -11,7 +11,10 @@
 #define FIFO_IN "a_fifo.txt"
 #define FIFO_OUT "a_fifo2.txt"
 #define FIFO_EXIT "a_fifo3.txt"
+#define LOGIN_TEMP "login.bin"
+#define USERNAMES "important/Database.txt"
 #define BUFFER_SIZE 1024
+#define UNKNOWN "UNKNOWN COMMAND"
 
 void exit_handler()
 {
@@ -21,98 +24,139 @@ void exit_handler()
 
 int main()
 {
+    
     while(1)
     {
-    mkfifo(FIFO_IN, 0666);
-    mkfifo(FIFO_OUT, 0666);
+        mkfifo(FIFO_IN, 0666);
+        mkfifo(FIFO_OUT, 0666);
 
-    pid_t pid;
-    int sock[2];
+        pid_t pid;
+        int sock[2];
 
-    int fd, fd_exit;
-    fd=open(FIFO_IN, O_RDONLY);
+        int fd, fd_exit;
+        fd=open(FIFO_IN, O_RDONLY);
 
-    socketpair(AF_UNIX, SOCK_STREAM, 0, sock);
-    pid=fork();
-    if(pid==0)
-    {
-        close(sock[1]);
-        char receiver[BUFFER_SIZE]="\0";
-        read(sock[0], receiver, BUFFER_SIZE);
-
-        //TODO ADD THE SAID INSTRUCTIONS:
-        //LOGIN:USER
-        //GET-LOGGED-USER
-        //GET-PROC-INFO:PID
-        //LOGOUT
-        //printf("%s\n", receiver);
-
-        if(strcmp(receiver, "exit")==0)
+        socketpair(AF_UNIX, SOCK_STREAM, 0, sock);
+        pid=fork();
+        if(pid==0)
         {
-            exit_handler();
+            close(sock[1]);
+            char receiver[BUFFER_SIZE]="\0";
+            read(sock[0], receiver, BUFFER_SIZE);
+
+            //TODO ADD THE SAID INSTRUCTIONS:
+            //GET-LOGGED-USER
+            //GET-PROC-INFO:PID
+
+            if(strcmp(receiver, "exit")==0)
+            {
+                exit_handler();
+            }
+            else if(strstr(receiver, "echo")!=0)
+            {
+                //TODO, come with something else than a struct
+                struct echo
+                {
+                    char cmd[BUFFER_SIZE];
+                    char sep;
+                    char message[BUFFER_SIZE];
+                }op;
+                sscanf(receiver, "%*s %*c %[^\n]", op.message);
+                write(sock[0], op.message, BUFFER_SIZE);
+
+            }
+            else if(strstr(receiver, "login")!=0)
+            {
+                if(access(LOGIN_TEMP, F_OK)==-1)
+                {
+                    //printf("Attempt Login\n");
+                    char user[BUFFER_SIZE];
+                    sscanf(receiver, "login : %s", user);
+                    FILE * fd=fopen(USERNAMES, "r");
+                    char lines[BUFFER_SIZE];
+
+                    while(fgets(lines, BUFFER_SIZE, fd))
+                    {
+                        lines[strlen(lines)-1]='\0';
+                        if(strcmp(lines, user)==0)
+                        {
+                            creat(LOGIN_TEMP, 0666);
+                            int fd_log;
+                            if((fd_log=open(LOGIN_TEMP, O_WRONLY))!=-1)
+                            {
+                                write(fd_log, user, BUFFER_SIZE);
+                            }
+                            close(fd_log);
+                            char msg[BUFFER_SIZE]="Successfully logged as ";
+                            strcat(msg, user);
+                            //printf("%s\n", msg);
+                            write(sock[0], msg, BUFFER_SIZE);
+                        }
+                    }
+                    if(access(LOGIN_TEMP, F_OK)==-1)
+                    {
+                        write(sock[0], "User not in our database", 25);
+                    }
+                    fclose(fd);
+                }
+                else
+                {
+                    write(sock[0], "Already logged in! Please logout", 33);
+                }
+
+            }
+            else if(strcmp(receiver, "logout")==0)
+            {
+                if(access(LOGIN_TEMP, F_OK)!=-1)
+                {
+                    unlink(LOGIN_TEMP);
+                    write(sock[0], "Loging off! You are GUEST!", 27);
+
+                }
+                else
+                {
+                    write(sock[0], "You are ALREADY GUEST", 22);
+                }
+
+            }
+            else
+            {
+
+                write(sock[0], "UNKNOWN COMMAND!!!", 19);
+            }
+            close(sock[0]);
+            exit(1);
+
         }
         else
         {
-        //printf("SUCCESFULLY received message from father!!\n");
-        //printf("OUTPUTED MESSAGE: %s\n", receiver);
-        if(write(sock[0], receiver, BUFFER_SIZE)<0)
-        {
-            perror("SERVER C: WRITE!!");
-            exit(1);
-        }
-        }
-        close(sock[0]);
-        exit(1);
-
-    }
-    else
-    {
-        close(sock[0]);
-        char msg[BUFFER_SIZE];
-        char outputed[BUFFER_SIZE];
+            close(sock[0]);
+            char msg[BUFFER_SIZE];
+            char outputed[BUFFER_SIZE];
         
 
-        read(fd, msg, BUFFER_SIZE);
-        //printf("OUTPUTED MESSAGE: %s\n", msg);
-        close(fd);
-        // if(strcmp(msg, "exit")==0)
-        // {
-        //     break;
-        // }
-        // //printf("Sending the Message to the child...\n");
-        write(sock[1], msg, BUFFER_SIZE);
+            read(fd, msg, BUFFER_SIZE);
 
-        wait(NULL);
+            close(fd);
 
-        fd=open(FIFO_OUT, O_WRONLY);
-        read(sock[1], outputed, BUFFER_SIZE);
-        //printf("%s\n", outputed);
-        write(fd, outputed, BUFFER_SIZE);
-        close(sock[1]);
-        close(fd);
-        if(access(FIFO_EXIT, F_OK)==0)
-        {
-            break;
-        }
+            write(sock[1], msg, BUFFER_SIZE);
+
+            wait(NULL);
+
+            fd=open(FIFO_OUT, O_WRONLY);
+            read(sock[1], outputed, BUFFER_SIZE);
+            write(fd, outputed, BUFFER_SIZE);
+            close(sock[1]);
+            close(fd);
+            if(access(FIFO_EXIT, F_OK)==0)
+            {
+                break;
+            }
         
-    }
+        }
     }
 
 } 
 
 
 
-   // char msg[BUFFER_SIZE];
-    // int fd;
-
-    // fd=open(FIFO_IN, O_RDONLY);
-
-    // read(fd, msg, BUFFER_SIZE);
-
-    // printf("SERVER: Received this lovely msg: %s\n", msg);
-    // close(fd);
-    // msg[0]='P';
-    // fd=open(FIFO_OUT, O_WRONLY);
-
-    // write(fd, msg, BUFFER_SIZE);
-    // close(fd);

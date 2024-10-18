@@ -8,11 +8,13 @@
 #define FIFO_IN "a_fifo.txt"
 #define FIFO_OUT "a_fifo2.txt"
 #define FIFO_EXIT "a_fifo3.txt"
+#define LOGIN_TEMP "login.bin"
 #define BUFFER_SIZE 1024
 #define PS "~>"
 
 int main()
 {
+    printf("WELLCOME!\nLoged in as: GUEST\n");
     printf("[CLIENT] Enter a message:\n");
     while(1)
     {
@@ -25,29 +27,20 @@ int main()
         
         fgets(msg, BUFFER_SIZE, stdin);
         msg[strlen(msg)-1]='\0';
-        //TEMPORARLY IMPLEMENTATION OF EXIT, PLEASE REMOVE!!!
-
         
 
-    //printf("OUTPUTED MESSAGE: %s\n", msg);
-    //printf("Waiting for the server to respond...\n");
         fd=open(FIFO_IN, O_WRONLY);
 
         write(fd, msg, BUFFER_SIZE);
 
     
         close(fd);
-        //TEMPORARLY IMPLEMENTATION OF EXIT, PLEASE REMOVE!!!
-        //if(strcmp(msg, "exit")==0)
-        //{
-        //    printf("[CLIENT] Program closing!! GOODBYE!!! :>\n");
-        //    break;
-        //}
+
     
         fd=open(FIFO_OUT, O_RDONLY);
         read(fd, received, BUFFER_SIZE);
         close(fd);
-        //if(strcmp(received, "exit")==0)
+
         if(access(FIFO_EXIT, F_OK)==0)
         {
             printf("[CLIENT] Now we are exiting the program! goodbye!! :>\n");
@@ -55,7 +48,7 @@ int main()
         }
         else
         {
-            printf("[CLIENT] Echoed: %s\n", received);
+            printf("[CLIENT] -> %s\n", received);
         }
 
         
@@ -64,5 +57,6 @@ int main()
     unlink(FIFO_IN);
     unlink(FIFO_OUT);
     unlink(FIFO_EXIT);
+    unlink(LOGIN_TEMP);
 
 }
