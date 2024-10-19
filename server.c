@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <string.h>
 #include <fcntl.h>
+#include <utmp.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 
@@ -118,6 +119,68 @@ int main()
                     write(sock[0], "You are ALREADY GUEST", 22);
                 }
 
+            }
+            else if (strcmp(receiver, "get-logged-user")==0)
+            {
+                if(access(LOGIN_TEMP, F_OK)!=-1)
+                {
+                    char userstats[BUFFER_SIZE];
+                    struct utmp *ut;
+                    setutent();
+
+                    while((ut=getutent())!=NULL)
+                    {
+                        if(ut->ut_type==USER_PROCESS)
+                        {
+                            snprintf(userstats, sizeof(userstats), "\n%s -> %s -> %d", ut->ut_user, ut->ut_host, ut->ut_tv.tv_sec);
+                            write(sock[0], userstats, BUFFER_SIZE);
+                        }
+                    }
+                    endutent();
+
+                }
+                else
+                {
+                    write(sock[0], "Command forbiden to be executed: You are GUEST", 47);
+                }
+            }
+            else if(strncmp(receiver, "get-proc-info : ", 16)==0)
+            {
+                if(access(LOGIN_TEMP, F_OK)!=-1)
+                {
+                    char process_stat[BUFFER_SIZE];
+                    int pid;
+                    char line_stat[BUFFER_SIZE];
+                    char total_info[BUFFER_SIZE];
+                    FILE * proc;
+                    strcpy(total_info, "\n");
+                    sscanf(receiver, "get-proc-info : %d", &pid);
+                    snprintf(process_stat, sizeof(process_stat), "/proc/%d/status", pid);
+                    printf("%s\n", process_stat);
+
+                    proc=fopen(process_stat, "r");
+                    if(proc==NULL)
+                    {
+                        perror("OPEN");
+                    }
+
+                    while(fgets(line_stat, BUFFER_SIZE, proc))
+                    {
+                        if(strncmp(line_stat, "Name:", 5)==0 || strncmp(line_stat, "State:", 6)==0 || strncmp(line_stat, "Pid:", 4)==0 || strncmp(line_stat, "PPid:", 5)==0 || strncmp(line_stat, "VmSize:", 7)==0)
+                        {
+
+                            strcat(total_info, line_stat);
+                        }
+                    }
+
+                    printf("%s\n", total_info);
+                    write(sock[0], total_info, BUFFER_SIZE);
+                    fclose(proc);
+                }
+                else
+                {
+                    write(sock[0], "Command forbiden to be executed: You are GUEST", 47);
+                }
             }
             else
             {
