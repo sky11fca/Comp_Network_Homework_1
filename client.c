@@ -5,10 +5,10 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
-#define FIFO_IN "a_fifo.txt"
-#define FIFO_OUT "a_fifo2.txt"
-#define FIFO_EXIT "a_fifo3.txt"
-#define LOGIN_TEMP "login.bin"
+#define FIFO_IN ".a_fifo.txt"
+#define FIFO_OUT ".a_fifo2.txt"
+#define FIFO_EXIT ".a_fifo3.txt"
+#define LOGIN_TEMP ".login.bin"
 #define BUFFER_SIZE 1024
 #define PS "~>"
 

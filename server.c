@@ -9,17 +9,16 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 
-#define FIFO_IN "a_fifo.txt"
-#define FIFO_OUT "a_fifo2.txt"
-#define FIFO_EXIT "a_fifo3.txt"
-#define LOGIN_TEMP "login.bin"
+#define FIFO_IN ".a_fifo.txt"
+#define FIFO_OUT ".a_fifo2.txt"
+#define FIFO_EXIT ".a_fifo3.txt"
+#define LOGIN_TEMP ".login.bin"
 #define USERNAMES "important/Database.txt"
 #define BUFFER_SIZE 1024
 #define UNKNOWN "UNKNOWN COMMAND"
 
 void exit_handler()
 {
-    //printf("FUNC CALLED\n");
     mkfifo(FIFO_EXIT, 0666);
 }
 
@@ -45,32 +44,21 @@ int main()
             char receiver[BUFFER_SIZE]="\0";
             read(sock[0], receiver, BUFFER_SIZE);
 
-            //TODO ADD THE SAID INSTRUCTIONS:
-            //GET-LOGGED-USER
-            //GET-PROC-INFO:PID
-
             if(strcmp(receiver, "exit")==0)
             {
                 exit_handler();
             }
             else if(strstr(receiver, "echo")!=0)
             {
-                //TODO, come with something else than a struct
-                struct echo
-                {
-                    char cmd[BUFFER_SIZE];
-                    char sep;
-                    char message[BUFFER_SIZE];
-                }op;
-                sscanf(receiver, "%*s %*c %[^\n]", op.message);
-                write(sock[0], op.message, BUFFER_SIZE);
+                char message[BUFFER_SIZE];
+                sscanf(receiver, "%*s %*c %[^\n]", message);
+                write(sock[0], message, BUFFER_SIZE);
 
             }
             else if(strstr(receiver, "login")!=0)
             {
                 if(access(LOGIN_TEMP, F_OK)==-1)
                 {
-                    //printf("Attempt Login\n");
                     char user[BUFFER_SIZE];
                     sscanf(receiver, "login : %s", user);
                     FILE * fd=fopen(USERNAMES, "r");
@@ -90,7 +78,6 @@ int main()
                             close(fd_log);
                             char msg[BUFFER_SIZE]="Successfully logged as ";
                             strcat(msg, user);
-                            //printf("%s\n", msg);
                             write(sock[0], msg, BUFFER_SIZE);
                         }
                     }
@@ -156,7 +143,6 @@ int main()
                     strcpy(total_info, "\n");
                     sscanf(receiver, "get-proc-info : %d", &pid);
                     snprintf(process_stat, sizeof(process_stat), "/proc/%d/status", pid);
-                    printf("%s\n", process_stat);
 
                     proc=fopen(process_stat, "r");
                     if(proc==NULL)
