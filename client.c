@@ -7,7 +7,6 @@
 
 #define FIFO_IN ".a_fifo.txt"
 #define FIFO_OUT ".a_fifo2.txt"
-#define FIFO_EXIT ".a_fifo3.txt"
 #define LOGIN_TEMP ".login.bin"
 #define BUFFER_SIZE 1024
 #define PS "~>"
@@ -17,7 +16,7 @@ int main()
     printf("Waiting for the server to initialize\n");
     while(access(FIFO_IN, F_OK)==-1 && access(FIFO_OUT, F_OK)==-1){}
     printf("WELLCOME!\nLoged in as: GUEST\n");
-    printf("[CLIENT] Enter a message:\n");
+    printf("USEFULL COMMANDS:\nlogin : <char> -> Login from a database\nget-logged-user -> print information about current connected user\nget-proc-info : <pid> -> info about a running process\nlogout -> deconnect from user\nquit -> quit program\n\nOTHER COMMANDS:\necho : <msg> -> echo a message\n");
     while(1)
     {
         char msg[BUFFER_SIZE];
@@ -48,7 +47,8 @@ int main()
         read(fd, received, BUFFER_SIZE);
         close(fd);
         printf("[SERVER] -> %s\n", received);
-        if(access(FIFO_EXIT, F_OK)==0 || strcmp(received, "exit")==0)
+
+        if(strcmp(msg, "quit")==0)
         {
             break;
         }
@@ -57,7 +57,6 @@ int main()
     }
     unlink(FIFO_IN);
     unlink(FIFO_OUT);
-    unlink(FIFO_EXIT);
     unlink(LOGIN_TEMP);
 
 }

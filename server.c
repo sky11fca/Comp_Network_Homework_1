@@ -11,16 +11,16 @@
 
 #define FIFO_IN ".a_fifo.txt"
 #define FIFO_OUT ".a_fifo2.txt"
-#define FIFO_EXIT ".a_fifo3.txt"
+#define FILEEXIT ".a_fifo3.txt"
 #define LOGIN_TEMP ".login.bin"
 #define USERNAMES "important/Database.txt"
 #define BUFFER_SIZE 1024
 #define UNKNOWN "UNKNOWN COMMAND"
 
-void exit_handler()
-{
-    mkfifo(FIFO_EXIT, 0666);
-}
+//void exit_handler()
+//{
+//    mkfifo(FIFO_EXIT, 0666);
+//}
 
 int main()
 {
@@ -34,44 +34,59 @@ int main()
 
         pid_t pid;
         int sock[2];
+        int p1[2], p2[2];
+      //  int q1[2], q2[2];
 
         int fd, fd_exit;
         fd=open(FIFO_IN, O_RDONLY);
-
+        
+        pipe(p1);
+        pipe(p2);
+        
+       // pipe(q1);
+       // pipe(q2);
+        
         socketpair(AF_UNIX, SOCK_STREAM, 0, sock);
         pid=fork();
-        if(pid==0)
+        if(pid==-1)
+        {
+            perror("FORK");
+            exit(EXIT_FAILURE);
+        }
+        else if(pid==0)
         {
             close(sock[1]);
+            close(p1[1]);
+            close(p2[0]);
             char receiver[BUFFER_SIZE]="\0";
             int receiver_len;
+            int rec_logged;
             read(sock[0], &receiver_len, sizeof(receiver_len));
             read(sock[0], receiver, BUFFER_SIZE);
-
-            printf("[SERVER-CHILD]:\n%s\n%d\n", receiver, receiver_len);
+            read(p1[0], &rec_logged, sizeof(rec_logged));
 
             if(strcmp(receiver, "quit")==0)
             {
-                if(running==1) exit_handler(), running=0;
                 char exitmsg[BUFFER_SIZE]="exit";
                 int exitmsg_len=5;
                 write(sock[0], &exitmsg_len, sizeof(exitmsg_len));
                 write(sock[0], exitmsg, BUFFER_SIZE);
             }
-            else if(strstr(receiver, "echo")!=0)
+            //else if(strstr(receiver, "echo")!=0)
+            else if(strncmp(receiver, "echo : ", 7)==0)
             {
                 char message[BUFFER_SIZE];
                 int message_len;
-                sscanf(receiver, "%*s %*c %[^\n]", message);
+                sscanf(receiver, "echo : %[^\n]", message);
                 message_len=strlen(message);
-                printf("[SERVER-CHILD]:\n%s\n%d\n", receiver, receiver_len);
                 write(sock[0], &message_len, sizeof(message_len));
                 write(sock[0], message, BUFFER_SIZE);
 
             }
-            else if(strstr(receiver, "login")!=0)
+            //else if(strstr(receiver, "login")!=0)
+            else if(strncmp(receiver, "login : ", 8)==0)
             {
-                if(access(LOGIN_TEMP, F_OK)==-1 || logged==0)
+                if(rec_logged==0)
                 {
                     char user[BUFFER_SIZE];
                     sscanf(receiver, "login : %s", user);
@@ -84,7 +99,7 @@ int main()
                         if(strcmp(lines, user)==0)
                         {
                             creat(LOGIN_TEMP, 0666);
-                            logged=1;
+                            rec_logged=1;
                             int fd_log;
                             if((fd_log=open(LOGIN_TEMP, O_WRONLY))!=-1)
                             {
@@ -95,13 +110,12 @@ int main()
                             int msg_lenght;
                             strcat(msg, user);
                             msg_lenght=strlen(msg);
-                            //printf("[SERVER-CHILD]:\n%s\n%d\n", msg, msg_lenght);
                             write(sock[0], &msg_lenght, sizeof(msg_lenght));
                             write(sock[0], msg, BUFFER_SIZE);
                             break;
                         }
                     }
-                    if(access(LOGIN_TEMP, F_OK)==-1 || logged==1)
+                    if(rec_logged==0)
                     {
                         int msg_error1=25;
                         write(sock[0], &msg_error1, sizeof(msg_error1));
@@ -119,10 +133,11 @@ int main()
             }
             else if(strcmp(receiver, "logout")==0)
             {
-                if(access(LOGIN_TEMP, F_OK)!=-1 || logged==1)
+                if(rec_logged==1)
                 {
                     unlink(LOGIN_TEMP);
                     int msg_logout=27;
+                    rec_logged=0;
                     write(sock[0], &msg_logout, sizeof(msg_logout));
                     write(sock[0], "Loging off! You are GUEST!", 27);
 
@@ -137,7 +152,7 @@ int main()
             }
             else if (strcmp(receiver, "get-logged-user")==0)
             {
-                if(access(LOGIN_TEMP, F_OK)!=-1 || logged==1)
+                if(rec_logged==1)
                 {
                     char userstats[BUFFER_SIZE];
                     char final_stats[BUFFER_SIZE];
@@ -169,7 +184,7 @@ int main()
             }
             else if(strncmp(receiver, "get-proc-info : ", 16)==0)
             {
-                if(access(LOGIN_TEMP, F_OK)!=-1 || logged==1)
+                if(rec_logged==1)
                 {
                     char process_stat[BUFFER_SIZE];
                     int pid;
@@ -196,7 +211,6 @@ int main()
                         }
                     }
 
-                    //printf("%s\n", total_info);
                     totalinfo_len=strlen(total_info);
                     write(sock[0], &totalinfo_len, sizeof(totalinfo_len));
                     write(sock[0], total_info, BUFFER_SIZE);
@@ -215,13 +229,18 @@ int main()
                 write(sock[0], &err_len, sizeof(err_len));
                 write(sock[0], "UNKNOWN COMMAND!!!", 19);
             }
+            write(p2[1], &rec_logged, sizeof(rec_logged));
             close(sock[0]);
+            close(p1[0]);
+            close(p2[1]);
             exit(1);
 
         }
         else
         {
             close(sock[0]);
+            close(p1[0]);
+            close(p2[1]);
             char msg[BUFFER_SIZE];
             int msg_len;
             char outputed[BUFFER_SIZE];
@@ -232,24 +251,31 @@ int main()
 
             close(fd);
     
-            printf("[SERVER-PARRENT]:\n%s\n%d\n", msg, msg_len);
             write(sock[1], &msg_len, sizeof(msg_len));
             write(sock[1], msg, BUFFER_SIZE);
+            
+            write(p1[1], &logged, sizeof(logged));
 
             wait(NULL);
 
             fd=open(FIFO_OUT, O_WRONLY);
             read(sock[1], &outputed_len, sizeof(outputed_len));
             read(sock[1], outputed, BUFFER_SIZE);
-            printf("[SERVER-PARRENT]:\n%s\n%d\n", outputed, outputed_len);
+            int output_logged, output_running;
+            read(p2[0], &output_logged, sizeof(output_logged));
+            logged=output_logged;
+            running=output_running;
             write(fd, &outputed_len, sizeof(outputed_len));
             write(fd, outputed, BUFFER_SIZE);
             close(sock[1]);
+            close(p1[1]);
+            close(p2[0]);
             close(fd);
-            if(access(FIFO_EXIT, F_OK)==0 || running==0)
+            if(strcmp(msg, "quit")==0)
             {
                 break;
             }
+            
         
         }
     }
