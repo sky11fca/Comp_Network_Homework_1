@@ -17,10 +17,6 @@
 #define BUFFER_SIZE 1024
 #define UNKNOWN "UNKNOWN COMMAND"
 
-//void exit_handler()
-//{
-//    mkfifo(FIFO_EXIT, 0666);
-//}
 
 int main()
 {
@@ -35,7 +31,6 @@ int main()
         pid_t pid;
         int sock[2];
         int p1[2], p2[2];
-      //  int q1[2], q2[2];
 
         int fd, fd_exit;
         fd=open(FIFO_IN, O_RDONLY);
@@ -43,8 +38,6 @@ int main()
         pipe(p1);
         pipe(p2);
         
-       // pipe(q1);
-       // pipe(q2);
         
         socketpair(AF_UNIX, SOCK_STREAM, 0, sock);
         pid=fork();
@@ -72,7 +65,6 @@ int main()
                 write(sock[0], &exitmsg_len, sizeof(exitmsg_len));
                 write(sock[0], exitmsg, BUFFER_SIZE);
             }
-            //else if(strstr(receiver, "echo")!=0)
             else if(strncmp(receiver, "echo : ", 7)==0)
             {
                 char message[BUFFER_SIZE];
@@ -83,7 +75,6 @@ int main()
                 write(sock[0], message, BUFFER_SIZE);
 
             }
-            //else if(strstr(receiver, "login")!=0)
             else if(strncmp(receiver, "login : ", 8)==0)
             {
                 if(rec_logged==0)
